@@ -1,7 +1,9 @@
 // Upload constructor
 function Upload(file, o, key) {
   function Upload() {
-    var upload, id, parts, part, segs, chunk_segs, chunk_lens, pipes, blob;
+    var upload, id, parts, part, segs, chunk_segs, chunk_lens, pipes, blob, imageTypes;
+
+    imageTypes = ["image/png", "image/jpg", "image/jpeg", "image/gif"];
     
     upload = this;
     
@@ -9,7 +11,7 @@ function Upload(file, o, key) {
     this.file = file;
     this.name = file.name;
     this.size = file.size;
-    this.type = file.type;
+    this.content_type = file.type;
     this.Etags = [];
     this.inprogress = [];
     this.uploaded = 0;
@@ -52,9 +54,34 @@ function Upload(file, o, key) {
       this.parts.pop(); // Remove the empty blob at the end of the array
     }
 
-    // init function will initiate the multipart upload, sign all the parts, and 
-    // start uploading some parts in parallel
+    // called to initialize upload
     this.init = function() {
+      if (_.contains(imageTypes, this.content_type)) {
+
+        this.imageData = {};
+        
+        var fr = new FileReader;
+        var fileLoaded = function() {
+          var img = new Image;
+          var imageLoaded = function() {
+            this.imageData.width = img.width;
+            this.imageData.height = img.height;
+            this.start();
+          }
+          img.onload = imageLoaded.bind(this);
+          img.src = fr.result;
+        };
+        fr.onload = fileLoaded.bind(this);
+        fr.readAsDataURL(upload.file);
+      
+      } else {
+        this.start();
+      }
+    }
+
+    // start function will initiate the multipart upload, sign all the parts, and 
+    // start uploading some parts in parallel
+    this.start = function() {
       upload.initiateMultipart(upload, function(obj) {
         var id = upload.id = obj.id
           , upload_id = upload.upload_id = obj.upload_id
@@ -71,7 +98,8 @@ function Upload(file, o, key) {
           });
         });
       }); 
-    } 
+    }
+
   };
   // Inherit the properties and prototype methods of the passed in S3MP instance object
   Upload.prototype = o;

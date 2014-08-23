@@ -7,17 +7,17 @@ module S3Multipart
 
     def self.create(params)
       response = initiate(params)
-      super(key: response["key"], upload_id: response["upload_id"], name: response["name"], uploader: params["uploader"], size: params["content_size"], context: params["context"].to_s)
+      super(key: response["key"], upload_id: response["upload_id"], name: response["name"], uploader: params["uploader"], size: params["content_size"], content_type: params["upload"]["content_type"], context: params["context"].to_s, width: params["imageWidth"], height: params["imageHeight"])
     end
 
-    def execute_callback(stage, session)
+    def execute_callback(stage, session, data={})
       controller = deserialize(uploader)
 
       case stage
       when :begin
-        controller.on_begin_callback.call(self, session) if controller.on_begin_callback
+        controller.on_begin_callback.call(self, session, data) if controller.on_begin_callback
       when :complete
-        controller.on_complete_callback.call(self, session) if controller.on_complete_callback
+        controller.on_complete_callback.call(self, session, data) if controller.on_complete_callback
       end
     end
 

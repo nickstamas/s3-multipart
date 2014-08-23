@@ -104,7 +104,7 @@ function S3MP(options) {
         // Notify the client that the upload has succeeded when we
         // get confirmation from the server
         if (obj.location) {
-          S3MP.onComplete(uploadObj);
+          S3MP.onComplete( _.extend(uploadObj, obj) );
         }
       });
 
@@ -165,19 +165,26 @@ function S3MP(options) {
 };
 
 S3MP.prototype.initiateMultipart = function(upload, cb) {
-  var url, body, xhr;
+  var url, body, xhr, context, performRequest, fr;
 
   url = '/s3_multipart/uploads';
-  body = JSON.stringify({ object_name  : upload.name,
-                          content_type : upload.type,
-                          content_size : upload.size,
-                          headers      : this.headers,
-                          context      : $(this.fileInputElement).data("context"),
-                          uploader     : $(this.fileInputElement).data("uploader")
-                        });
 
+  context = $(this.fileInputElement).data("context");
+
+  body = {  object_name  : upload.name,
+            content_type : upload.content_type,
+            content_size : upload.size,
+            headers      : this.headers,
+            context      : context,
+            uploader     : $(this.fileInputElement).data("uploader"),
+            imageWidth   : upload.imageData.width,
+            imageHeight  : upload.imageData.height
+          };
+
+  console.log("inside initiateMultipart");
+  console.log(upload.imageData.width);
   xhr = this.createXhrRequest('POST', url);
-  this.deliverRequest(xhr, body, cb);
+  this.deliverRequest(xhr, JSON.stringify(body), cb);
 
 };
 
@@ -205,7 +212,9 @@ S3MP.prototype.completeMultipart = function(uploadObj, cb) {
   body = JSON.stringify({ object_name    : uploadObj.object_name,
                           upload_id      : uploadObj.upload_id,
                           content_length : uploadObj.size,
-                          parts          : uploadObj.Etags
+                          parts          : uploadObj.Etags,
+                          width          : uploadObj.imageData.width,
+                          height         : uploadObj.imageData.height
                         });
 
   xhr = this.createXhrRequest('PUT', url);
@@ -342,7 +351,9 @@ S3MP.prototype.resume = function(key) {
 // Upload constructor
 function Upload(file, o, key) {
   function Upload() {
-    var upload, id, parts, part, segs, chunk_segs, chunk_lens, pipes, blob;
+    var upload, id, parts, part, segs, chunk_segs, chunk_lens, pipes, blob, imageTypes;
+
+    imageTypes = ["image/png", "image/jpg", "image/jpeg", "image/gif"];
     
     upload = this;
     
@@ -350,7 +361,7 @@ function Upload(file, o, key) {
     this.file = file;
     this.name = file.name;
     this.size = file.size;
-    this.type = file.type;
+    this.content_type = file.type;
     this.Etags = [];
     this.inprogress = [];
     this.uploaded = 0;
@@ -393,9 +404,34 @@ function Upload(file, o, key) {
       this.parts.pop(); // Remove the empty blob at the end of the array
     }
 
-    // init function will initiate the multipart upload, sign all the parts, and 
-    // start uploading some parts in parallel
+    // called to initialize upload
     this.init = function() {
+      if (_.contains(imageTypes, this.content_type)) {
+
+        this.imageData = {};
+        
+        var fr = new FileReader;
+        var fileLoaded = function() {
+          var img = new Image;
+          var imageLoaded = function() {
+            this.imageData.width = img.width;
+            this.imageData.height = img.height;
+            this.start();
+          }
+          img.onload = imageLoaded.bind(this);
+          img.src = fr.result;
+        };
+        fr.onload = fileLoaded.bind(this);
+        fr.readAsDataURL(upload.file);
+      
+      } else {
+        this.start();
+      }
+    }
+
+    // start function will initiate the multipart upload, sign all the parts, and 
+    // start uploading some parts in parallel
+    this.start = function() {
       upload.initiateMultipart(upload, function(obj) {
         var id = upload.id = obj.id
           , upload_id = upload.upload_id = obj.upload_id
@@ -412,7 +448,8 @@ function Upload(file, o, key) {
           });
         });
       }); 
-    } 
+    }
+
   };
   // Inherit the properties and prototype methods of the passed in S3MP instance object
   Upload.prototype = o;
