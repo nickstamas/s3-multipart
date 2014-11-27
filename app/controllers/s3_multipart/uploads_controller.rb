@@ -60,7 +60,7 @@ module S3Multipart
           upload.update_attributes(location: response[:location])
           data = {}
           upload.execute_callback(:complete, session, data)
-          response.merge!({custom_data: data})
+          response.merge!(data)
         rescue => e
           logger.error "EXC: #{e.message}"
           logger.error e.backtrace
