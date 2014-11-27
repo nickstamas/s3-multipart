@@ -177,12 +177,10 @@ S3MP.prototype.initiateMultipart = function(upload, cb) {
             headers      : this.headers,
             context      : context,
             uploader     : $(this.fileInputElement).data("uploader"),
-            imageWidth   : upload.imageData.width,
-            imageHeight  : upload.imageData.height
+            imageWidth   : upload.width,
+            imageHeight  : upload.height
           };
 
-  console.log("inside initiateMultipart");
-  console.log(upload.imageData.width);
   xhr = this.createXhrRequest('POST', url);
   this.deliverRequest(xhr, JSON.stringify(body), cb);
 
@@ -213,8 +211,8 @@ S3MP.prototype.completeMultipart = function(uploadObj, cb) {
                           upload_id      : uploadObj.upload_id,
                           content_length : uploadObj.size,
                           parts          : uploadObj.Etags,
-                          width          : uploadObj.imageData.width,
-                          height         : uploadObj.imageData.height
+                          width          : uploadObj.width,
+                          height         : uploadObj.height
                         });
 
   xhr = this.createXhrRequest('PUT', url);
@@ -407,15 +405,13 @@ function Upload(file, o, key) {
     // called to initialize upload
     this.init = function() {
       if (_.contains(imageTypes, this.content_type)) {
-
-        this.imageData = {};
         
         var fr = new FileReader;
         var fileLoaded = function() {
           var img = new Image;
           var imageLoaded = function() {
-            this.imageData.width = img.width;
-            this.imageData.height = img.height;
+            this.width = img.width;
+            this.height = img.height;
             this.start();
           }
           img.onload = imageLoaded.bind(this);

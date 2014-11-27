@@ -57,15 +57,13 @@ function Upload(file, o, key) {
     // called to initialize upload
     this.init = function() {
       if (_.contains(imageTypes, this.content_type)) {
-
-        this.imageData = {};
         
         var fr = new FileReader;
         var fileLoaded = function() {
           var img = new Image;
           var imageLoaded = function() {
-            this.imageData.width = img.width;
-            this.imageData.height = img.height;
+            this.width = img.width;
+            this.height = img.height;
             this.start();
           }
           img.onload = imageLoaded.bind(this);
